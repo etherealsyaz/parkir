@@ -1,65 +1,63 @@
-version: "3.8"
-
 services:
-  app1_fajrina:
+  web-fajrina-1:
     build: .
-    container_name: parkir_app1_fajrina
+    container_name: web-fajrina-1
     restart: unless-stopped
     ports:
       - "8081:80"
     environment:
-      DB_HOST: host_fajrina
-      DB_DATABASE: db_fajrina
+      DB_HOST: db-fajrina
+      DB_DATABASE: parkir_fajrina
       DB_USERNAME: root
       DB_PASSWORD: fajrina_secret123
     depends_on:
-      - host_fajrina
+      - db-fajrina
     networks:
       - asat-net
 
-  app2_fajrina:
+  web-fajrina-2:
     build: .
-    container_name: parkir_app2_fajrina
+    container_name: web-fajrina-2
     restart: unless-stopped
     ports:
       - "8082:80"
     environment:
-      DB_HOST: host_fajrina
-      DB_DATABASE: db_fajrina
+      DB_HOST: db-fajrina
+      DB_DATABASE: parkir_fajrina
       DB_USERNAME: root
       DB_PASSWORD: fajrina_secret123
     depends_on:
-      - host_fajrina
+      - db-fajrina
     networks:
       - asat-net
 
-  app3_fajrina:
+  web-fajrina-3:
     build: .
-    container_name: parkir_app3_fajrina
+    container_name: web-fajrina-3
     restart: unless-stopped
     ports:
       - "8083:80"
     environment:
-      DB_HOST: host_fajrina
-      DB_DATABASE: db_fajrina
+      DB_HOST: db-fajrina
+      DB_DATABASE: parkir_fajrina
       DB_USERNAME: root
       DB_PASSWORD: fajrina_secret123
     depends_on:
-      - host_fajrina
+      - db-fajrina
     networks:
       - asat-net
 
-  host_fajrina:
+  db-fajrina:
     image: mysql:8.0
-    container_name: parkir_db_fajrina
+    container_name: db-fajrina
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: fajrina_secret123
-      MYSQL_DATABASE: db_fajrina
+      MYSQL_DATABASE: parkir_fajrina
     ports:
       - "33061:3306"
     volumes:
-      - dbdata_fajrina:/var/lib/mysql
+      - asat-vol:/var/lib/mysql
     networks:
       - asat-net
 
