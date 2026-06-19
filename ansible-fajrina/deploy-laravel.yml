@@ -1,0 +1,145 @@
+- name: Deploy Laravel Parkir - fajrina
+  hosts: target_vm
+  become: yes
+
+  vars:
+    project_src: "/asat"
+    project_dir: "/var/www/laravel-fajrina"
+
+  tasks:
+    - name: update apt cache
+      apt:
+       update_cache: yes
+
+    - name: Install dependency dasar
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - git
+          - python3-pip
+        state: present
+
+    - name: Buat folder keyrings
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Hapus GPG key lama
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/keyrings/docker.gpg
+        - /etc/apt/keyrings/docker.asc
+        - /etc/apt/sources.list.d/docker.list
+
+    - name: Download GPG key Docker
+      get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+        force: yes
+
+    - name: Tambah Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        filename: docker
+        state: present
+        update_cache: yes
+
+    - name: Install Docker Engine & Compose plugin
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+
+    - name: Install docker python module
+      pip:
+        name: docker
+        state: present
+        extra_args: "--break-system-packages"
+
+    - name: Pastikan service docker aktif
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Tambahkan user ke group docker
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+
+
+    - name: Buat direktori target di VM2
+      file:
+        path: "{{ project_dir }}"
+        state: directory
+        mode: '0755'
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+
+    - name: Copy source code Laravel dari VM1 ke VM2
+      synchronize:
+        src: "{{ project_src }}/"
+        dest: "{{ project_dir }}/"
+        delete: yes
+        recursive: yes
+
+    - name: Copy file .env ke project
+      copy:
+        dest: "{{ project_dir }}/.env"
+        content: |
+          APP_NAME=ParkirFajrina
+          APP_ENV=local
+          APP_KEY=base64:3QRbJWNdCA+ExucdK/ceA64raUse+drz5nITe7f/P4o=
+          APP_DEBUG=true
+          APP_URL=http://10.10.10.10
+
+          SESSION_DRIVER=database
+
+          DB_CONNECTION=mysql
+          DB_HOST=db-fajrina
+          DB_PORT=3306
+          DB_DATABASE=parkir_fajrina
+          DB_USERNAME=root
+          DB_PASSWORD=fajrina_secret123
+
+
+    - name: Build Docker image dari Dockerfile
+      community.docker.docker_image:
+        name: web-fajrina
+        build:
+          path: "{{ project_dir }}"
+        source: build
+        force_source: yes
+
+
+    - name: Jalankan docker compose
+      community.docker.docker_compose_v2:
+        project_src: "{{ project_dir }}"
+        build: always
+        state: present
+
+    - name: Tunggu container stabil
+      pause:
+        seconds: 30
+
+
+    - name: Cek status semua container
+      community.docker.docker_compose_v2:
+        project_src: "{{ project_dir }}"
+        state: present
+      register: compose_result
+
+    - debug:
+        var: compose_result
